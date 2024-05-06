@@ -20,7 +20,7 @@ Another issue that needed to be fixed, was that the SHA-1 C++ function could not
 Using the RTL generated from synthesizing the HLS code, a component was created. This component was used in the overlay designed in Vivado with the name sha1_0. The sha1_0 block was connected to the AXI direct memory access (DMA) block which allowed for the data transfer within the design. This block design is shown in Figure 4. After generating a HDL wrapper for the block design, the bitstream was generated. Using the .bit and .hwh files, this overlay was instantiated in a Jupyter Notebook. Using an input and output buffer, the input ASCII values are fed into the input AXI stream. The five output hash values are extracted from the output AXI stream and are concatenated together. The output hash was then compared to the hash produced by an online SHA-1 hash generator to validate the design. 
 
 ## Comparing Input Sizes 
-By changing the preprocessor directive that defines the input size of the message in the HLS code, different input sizes performance metrics were recorded after synthesizing the design in Vitis. The area was calculated using the following equation: Area = Max(FF,LUT) + 100 * BRAM.
+By changing the preprocessor directive that defines the input size of the message in the HLS code, different input sizes performance metrics were recorded after synthesizing the design in Vitis. The area was calculated using the following equation: Area = Max(FF,LUT) + 100 * BRAM. These measurements were recorded in Table 1 and plotted in Figure 1.
 
 | Input Size | Latency (μs) | FF | LUT | BRAM | Area |
 | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -37,15 +37,25 @@ By changing the preprocessor directive that defines the input size of the messag
 
 It was seen that increasing the input size, increased the latency and also slightly increased the area for the most part. The increased latency followed the expected behavior as a larger input size would result in more iterations in the algorithm. The area for the largest input size tested, 100, was the smallest area of all the designs. The reason behind this could be that Vitis automatically applied a pipeline optimization when synthesizing the HLS code.
 
-The five designs with varying input sizes were imported into Vivado and bitstreams were generated for each design. Next, a Jupyter notebook was created that compared the performance of the different hardware designs versus the software implementation.
+The five designs with varying input sizes were imported into Vivado and bitstreams were generated for each design. Next, a Jupyter notebook was created that compared the performance of the different hardware designs versus the software implementation. The results were recorded in Table 2 and plotted in Figure 2.
+
+| Input Size | Hardware Executing Time (ms) | Software Executing Time (ms) |
+| :---: | :---: | :---: |
+| 5 | 1.852 | 3.294 |
+| 10 | 1.863 | 3.631 | 
+| 20 | 1.946 | 5.347 |
+| 50 | 1.952 | 5.621 |
+| 100 | 1.956 | 5.867 |
+
+*Table 2: Performance of hardware and software designs with varying input sizes*
 
 ![image](images/input_sizes_run_times.png)
 *Figure 2: Input Sizes vs. Hardware and Software Run Times*
 
-As seen from the results, the hardware executing time followed a similar trend to the latency values from Figure 1 as expected. From Figure 2, it can be seen that the input sizes had a smaller effect on the hardware run times when compared to the software hardware times. This could be due to the software having a large variability of performance when running on the Jupyter notebook. The software run times were almost twice as longer than the hardware run times for input sizes of 5 and 10 and almost three times as longer than the hardware run times for input sizes of 20, 50, and 100. 
+As seen from the results from Table 2, the hardware executing time followed a similar trend to the latency values from Table 1 as expected. From Figure 2 it can be seen that the input sizes had a smaller effect on the hardware run times when compared to the software hardware times. This could be due to the software having a large variability of performance when running on the Jupyter notebook. The software run times were almost twice as longer than the hardware run times for input sizes of 5 and 10 and almost three times as longer than the hardware run times for input sizes of 20, 50, and 100. 
 
 ## Design Optimization
-The area and latency were compared in 6 designs with different HLS optimizations and a pareto graph was made using the area and latency values as seen in Figure 3.
+The area and latency were compared in 6 designs with different HLS optimizations as seen in Table 3, and a pareto graph was made as seen in Figure 3. 
 
 | Design Number | Description | Latency (μs) | Area |
 | :---: | :---: | :---: | :---: |
@@ -57,6 +67,16 @@ The area and latency were compared in 6 designs with different HLS optimizations
 | 6 | Design 4 with Loop Pipelining | 2.82 | 5152 |
 
 *Table 3: HLS Optimizations*
+
+![image](images/pareto_graph.png)
+*Figure 3: HLS Optimizations Pareto Graph*
+
+The design with the lowest latency was design 4 which utilized loop fission on the main SHA-1 loop. The latency was reduced by a factor of 3 compared to the base design. The design with the lowest area was design 3 which utilized loop pipelining on the main SHA-1 loop. The design that did the best job of trading off speed vs. area was design 3 which utilized loop pipelining. An interesting data point seen from the HLS optimizations was that the design that had loop unrolling on the main SHA-1 loop (design 2) had the same latency and area as the design that had both loop fission and loop unrolling on the main SHA-1 loop (design 5). 
+
+Loop fission was possible on the main SHA-1 loop since before the optimization, it was an 80 iteration for loop that performed certain bitwise operations based on the current loop iteration. So for example, the loop would do a bitwise operation for iterations 0 to 20, another for 20 to 40, another for 40 to 60, and another for 60 to 80. To do this, there were a series of if statements to determine the current iteration of the for loop in the main SHA-1 loop that didn’t have the loop fission optimization. With the loop fission optimization, the for loop of 80 iterations was broken up into 4 different for loops with 20 iterations each. 
+
+## How to Run Code
+To run the hardware and software implementations, upload the sha1_5, sha1_10, sha1_20, sha1_50, and sha1_100 folders and run the Jupyter notebook file (sha1_input_sizes.ipynb). To run the design for an input size of X, access the sha1_X.bit and sha1_X.hwh files stored in the respective sha1_X folder. All that is needed to run the Vitis code is the sha1_HLS.cpp and sha1_testbench.cpp files. The sha1_HLS.cpp file should be uploaded as the source file, and the sha1_testbench.cpp file should be uploaded as the test bench file. To change the input size change the preprocessor directive that defines the input size of the message (INPUT_SIZE) at the top of the sha1_HLS.cpp file. The HLS code with loop fission is in the file sha1_HLS_optimized.cpp. It uses the same test bench as before in sha1_testbench.cpp.
 
 
 
